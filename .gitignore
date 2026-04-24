@@ -12,6 +12,7 @@
 *.aab
 *.keystore
 *.jks
+keystore.properties
 node_modules/
 data/extracted/
 data/node_modules/
