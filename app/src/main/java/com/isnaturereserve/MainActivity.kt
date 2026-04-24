@@ -40,6 +40,7 @@ sealed class UiState {
         val lon: Double,
         val accuracyMeters: Float,
         val exitPoint: ReserveIndex.ExitPoint? = null,
+        val nearbyReserve: ReserveIndex.NearbyReserve? = null,
     ) : UiState()
 }
 
@@ -148,7 +149,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                         val idx = index
                         val matches = idx?.query(loc.longitude, loc.latitude).orEmpty()
                         val exit = if (matches.isNotEmpty()) idx?.nearestExit(loc.longitude, loc.latitude) else null
-                        UiState.HasFix(matches, loc.latitude, loc.longitude, loc.accuracy, exit)
+                        val nearby = if (matches.isEmpty()) idx?.nearestReserve(loc.longitude, loc.latitude) else null
+                        UiState.HasFix(matches, loc.latitude, loc.longitude, loc.accuracy, exit, nearby)
                     }
                 }
                 render(newState)
@@ -230,7 +232,30 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         if (s.matches.isEmpty()) {
             v.verdict.text = getString(R.string.no_not_in_reserve)
             v.verdict.setTextColor(ContextCompat.getColor(this, R.color.red_no))
-            v.detail.text = getString(R.string.not_in_any_reserve)
+
+            s.nearbyReserve?.let { nr ->
+                val label = if (nr.type == ReserveIndex.Type.PARK) "National park" else "Nature reserve"
+                val displayName = when {
+                    nr.nameEn.isNotBlank() -> nr.nameEn
+                    nr.name.isNotBlank() -> nr.name
+                    else -> "(unnamed)"
+                }
+                val dist = nr.distanceMeters
+                val formatted = if (dist >= 1000f) {
+                    String.format(Locale.US, "%.1f km", dist / 1000f)
+                } else {
+                    String.format(Locale.US, "%d m", dist.toInt())
+                }
+                v.detail.text = getString(R.string.nearest_reserve, formatted, label, displayName)
+
+                val results = FloatArray(2)
+                Location.distanceBetween(s.lat, s.lon, nr.lat, nr.lon, results)
+                bearingToExit = results[1]
+                v.exitCompass.setDirection(results[1], deviceHeading)
+                v.exitCompass.visibility = View.VISIBLE
+            } ?: run {
+                v.detail.text = getString(R.string.not_in_any_reserve)
+            }
         } else {
             v.verdict.text = getString(R.string.yes_in_reserve)
             v.verdict.setTextColor(ContextCompat.getColor(this, R.color.green_yes))

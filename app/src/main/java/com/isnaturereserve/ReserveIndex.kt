@@ -34,6 +34,15 @@ class ReserveIndex(private val features: List<Feature>) {
 
     data class ExitPoint(val lon: Double, val lat: Double, val distanceMeters: Float)
 
+    data class NearbyReserve(
+        val name: String,
+        val nameEn: String,
+        val type: Type,
+        val lon: Double,
+        val lat: Double,
+        val distanceMeters: Float,
+    )
+
     /**
      * Finds the nearest point on any reserve/park boundary that is truly outside
      * all reserves (i.e. the nearest "exit" from protected areas).
@@ -96,6 +105,29 @@ class ReserveIndex(private val features: List<Feature>) {
         val results = FloatArray(1)
         android.location.Location.distanceBetween(lat, lon, bestLat, bestLon, results)
         return ExitPoint(bestLon, bestLat, results[0])
+    }
+
+    fun nearestReserve(lon: Double, lat: Double): NearbyReserve? {
+        val cosLat = Math.cos(Math.toRadians(lat))
+        var bestDist2 = Double.MAX_VALUE
+        var bestLon = 0.0
+        var bestLat = 0.0
+        var bestFeature: Feature? = null
+
+        for (f in features) {
+            for (ring in f.rings) {
+                val d2 = closestOnRing(lon, lat, cosLat, ring) ?: continue
+                if (d2.first < bestDist2) {
+                    bestDist2 = d2.first; bestLon = d2.second; bestLat = d2.third
+                    bestFeature = f
+                }
+            }
+        }
+
+        val feat = bestFeature ?: return null
+        val results = FloatArray(1)
+        android.location.Location.distanceBetween(lat, lon, bestLat, bestLon, results)
+        return NearbyReserve(feat.name, feat.nameEn, feat.type, bestLon, bestLat, results[0])
     }
 
     fun query(lon: Double, lat: Double): List<Match> {

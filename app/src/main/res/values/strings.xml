@@ -17,4 +17,5 @@
     <string name="accuracy_caveat">Low GPS accuracy — result may be unreliable near boundaries.</string>
     <string name="near_boundary_caveat">You may be close to a boundary.</string>
     <string name="nearest_exit">Nearest exit: ~%1$s</string>
+    <string name="nearest_reserve">Nearest %2$s (~%1$s):\n%3$s</string>
 </resources>
