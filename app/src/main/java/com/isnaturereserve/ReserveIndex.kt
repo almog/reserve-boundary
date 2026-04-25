@@ -2,6 +2,7 @@ package com.isnaturereserve
 
 import android.content.Context
 import android.util.JsonReader
+import android.util.JsonToken
 import java.io.InputStreamReader
 
 /**
@@ -265,18 +266,34 @@ class ReserveIndex(private val features: List<Feature>) {
         }
 
         private fun readGeometry(r: JsonReader): List<FloatArray> {
-            var geomType = ""
-            var rings: List<FloatArray> = emptyList()
+            var geomType: String? = null
+            var streamedRings: List<FloatArray>? = null
+            var bufferedCoords: Any? = null
             r.beginObject()
             while (r.hasNext()) {
                 when (r.nextName()) {
                     "type" -> geomType = r.nextString()
-                    "coordinates" -> rings = if (geomType == "MultiPolygon") readMultiPolygonCoords(r) else readPolygonCoords(r)
+                    "coordinates" -> {
+                        // RFC 7946 doesn't mandate that "type" precedes "coordinates".
+                        // If we already know the type, stream parse to avoid allocations.
+                        // If we don't, buffer the raw nested arrays and flatten once known.
+                        val gt = geomType
+                        if (gt != null) {
+                            streamedRings = if (gt == "MultiPolygon") readMultiPolygonCoords(r) else readPolygonCoords(r)
+                        } else {
+                            bufferedCoords = readNested(r)
+                        }
+                    }
                     else -> r.skipValue()
                 }
             }
             r.endObject()
-            return rings
+            return when {
+                streamedRings != null -> streamedRings
+                bufferedCoords != null && geomType == "MultiPolygon" -> flattenMultiPolygon(bufferedCoords)
+                bufferedCoords != null && geomType == "Polygon" -> flattenPolygon(bufferedCoords)
+                else -> emptyList()
+            }
         }
 
         private fun readPolygonCoords(r: JsonReader): List<FloatArray> {
@@ -306,10 +323,50 @@ class ReserveIndex(private val features: List<Feature>) {
                 r.beginArray()
                 coords.add(r.nextDouble().toFloat())
                 coords.add(r.nextDouble().toFloat())
+                // RFC 7946 allows positions to carry a third (altitude) or further element.
+                while (r.hasNext()) r.skipValue()
                 r.endArray()
             }
             r.endArray()
             return FloatArray(coords.size) { coords[it] }
+        }
+
+        /** Recursively reads nested arrays of numbers into List<Any>. Used as a fallback
+         *  when "coordinates" appears before "type" so we can defer the structural
+         *  interpretation. */
+        private fun readNested(r: JsonReader): Any {
+            return if (r.peek() == JsonToken.BEGIN_ARRAY) {
+                val list = ArrayList<Any>()
+                r.beginArray()
+                while (r.hasNext()) list.add(readNested(r))
+                r.endArray()
+                list
+            } else {
+                r.nextDouble()
+            }
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        private fun flattenPolygon(coords: Any): List<FloatArray> {
+            val rings = coords as List<Any>
+            return rings.map { ring ->
+                val positions = ring as List<Any>
+                val out = FloatArray(positions.size * 2)
+                positions.forEachIndexed { i, p ->
+                    val pos = p as List<Any>
+                    out[i * 2] = (pos[0] as Double).toFloat()
+                    out[i * 2 + 1] = (pos[1] as Double).toFloat()
+                }
+                out
+            }
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        private fun flattenMultiPolygon(coords: Any): List<FloatArray> {
+            val polygons = coords as List<Any>
+            val out = ArrayList<FloatArray>(polygons.size)
+            polygons.forEach { poly -> out.addAll(flattenPolygon(poly)) }
+            return out
         }
     }
 }
