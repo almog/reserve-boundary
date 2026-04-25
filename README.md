@@ -43,6 +43,6 @@ Requires Android SDK with compileSdk 35 and JDK 17.
 
 - **Fine / Coarse Location** — required to test the user's position against reserve polygons. Used only on-device; no location data leaves the phone.
 
-## License
+## Attribution
 
-Boundary data is provided by INPA under the terms described in the [inpa-boundaries](https://github.com/almog/inpa-boundaries) repository.
+Boundary data is published by the Israel Nature and Parks Authority (INPA). The bundled dataset is sourced from the [inpa-boundaries](https://github.com/almog/inpa-boundaries) processing scripts.
