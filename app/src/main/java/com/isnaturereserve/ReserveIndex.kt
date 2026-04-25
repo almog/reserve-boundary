@@ -149,6 +149,11 @@ class ReserveIndex(private val features: List<Feature>) {
     }
 
     companion object {
+        /** The parsed index outlives the activity so config changes (rotation, theme,
+         *  locale) don't trigger a 7MB re-parse. The reference is a process-wide
+         *  singleton — fine for a static, read-only dataset. */
+        @Volatile private var cached: ReserveIndex? = null
+
         /** Ray casting: counts edge crossings of a rightward horizontal ray from (lon, lat). */
         private fun pointInRing(lon: Double, lat: Double, ring: FloatArray): Boolean {
             var inside = false
@@ -203,22 +208,29 @@ class ReserveIndex(private val features: List<Feature>) {
             return Triple(best2, bx, by)
         }
 
-        /** Parses the bundled assets/inpa_reserves.geojson via streaming JsonReader. */
+        /** Parses the bundled assets/inpa_reserves.geojson via streaming JsonReader.
+         *  Cached after the first successful parse — see [cached]. */
         fun loadFromAssets(ctx: Context, assetPath: String = "inpa_reserves.geojson"): ReserveIndex {
-            ctx.assets.open(assetPath).use { input ->
-                JsonReader(InputStreamReader(input, Charsets.UTF_8)).use { r ->
-                    val features = ArrayList<Feature>(1024)
-                    r.beginObject()
-                    while (r.hasNext()) {
-                        if (r.nextName() == "features") {
-                            r.beginArray()
-                            while (r.hasNext()) features.add(readFeature(r))
-                            r.endArray()
-                        } else r.skipValue()
+            cached?.let { return it }
+            synchronized(this) {
+                cached?.let { return it }
+                ctx.assets.open(assetPath).use { input ->
+                    JsonReader(InputStreamReader(input, Charsets.UTF_8)).use { r ->
+                        val features = ArrayList<Feature>(1024)
+                        r.beginObject()
+                        while (r.hasNext()) {
+                            if (r.nextName() == "features") {
+                                r.beginArray()
+                                while (r.hasNext()) features.add(readFeature(r))
+                                r.endArray()
+                            } else r.skipValue()
+                        }
+                        r.endObject()
+                        features.trimToSize()
+                        val idx = ReserveIndex(features)
+                        cached = idx
+                        return idx
                     }
-                    r.endObject()
-                    features.trimToSize()
-                    return ReserveIndex(features)
                 }
             }
         }
