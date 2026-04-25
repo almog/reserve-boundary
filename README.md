@@ -19,16 +19,23 @@ The bundled GeoJSON (`app/src/main/assets/inpa_reserves.geojson`) contains polyg
 
 ## Building
 
+Debug build, install on a connected device:
+
 ```
-./gradlew assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+./gradlew installDebug
+```
+
+Release build (signed AAB for Play Store upload — see [PLAY_STORE_CHECKLIST.md](PLAY_STORE_CHECKLIST.md) for the keystore setup):
+
+```
+./gradlew bundleRelease
 ```
 
 Requires Android SDK with compileSdk 35 and JDK 17.
 
 ## Permissions
 
-- **Fine / Coarse Location** — required to determine whether you're inside a reserve boundary.
+- **Fine / Coarse Location** — required to test the user's position against reserve polygons. Used only on-device; no location data leaves the phone.
 
 ## License
 
