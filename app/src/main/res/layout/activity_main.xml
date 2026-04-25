@@ -6,18 +6,38 @@
     android:layout_height="match_parent"
     android:padding="24dp">
 
+    <!-- Vertical packed chain: question → verdict → detail → exitCompass → caveat
+         → spinner → primaryButton. The chain centers the visible group between the
+         top of the screen and the coords/vintage block at the bottom; GONE views
+         collapse so the group stays visually balanced regardless of UI state. -->
+
+    <TextView
+        android:id="@+id/question"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="20sp"
+        android:textColor="@color/text_primary"
+        android:gravity="center"
+        android:text="@string/header_question"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/verdict"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintVertical_chainStyle="packed" />
+
     <TextView
         android:id="@+id/verdict"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:textSize="96sp"
         android:textStyle="bold"
         android:textColor="@color/text_primary"
         android:text=""
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/question"
+        app:layout_constraintBottom_toTopOf="@id/detail"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/detail" />
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <TextView
         android:id="@+id/detail"
@@ -29,6 +49,7 @@
         android:layout_marginTop="16dp"
         android:text="@string/loading_data"
         app:layout_constraintTop_toBottomOf="@id/verdict"
+        app:layout_constraintBottom_toTopOf="@id/exitCompass"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -39,6 +60,7 @@
         android:layout_marginTop="16dp"
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/detail"
+        app:layout_constraintBottom_toTopOf="@id/caveat"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -53,6 +75,7 @@
         android:text=""
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/exitCompass"
+        app:layout_constraintBottom_toTopOf="@id/spinner"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -64,6 +87,7 @@
         android:layout_marginTop="24dp"
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/caveat"
+        app:layout_constraintBottom_toTopOf="@id/primaryButton"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -75,6 +99,7 @@
         android:visibility="gone"
         android:text="@string/retry"
         app:layout_constraintTop_toBottomOf="@id/spinner"
+        app:layout_constraintBottom_toTopOf="@id/coords"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
