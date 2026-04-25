@@ -2,6 +2,7 @@ package com.isnaturereserve
 
 import android.Manifest
 import android.content.Intent
+import android.hardware.GeomagneticField
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -54,8 +55,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private var index: ReserveIndex? = null
     private var state: UiState = UiState.LoadingData
+    /** Magnetic bearing (degrees) toward the displayed target. The rotation-vector sensor
+     *  reports magnetic-north heading, so the compass arithmetic is consistent only if
+     *  this value is also magnetic — see [trueToMagnetic]. */
     private var bearingToExit: Float? = null
     private var deviceHeading = 0f
+    private var declination = 0f
     private var locationJob: Job? = null
 
     private val permissionLauncher = registerForActivityResult(
@@ -237,6 +242,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private fun renderFix(s: UiState.HasFix) {
         val v = binding
+        // Compute local magnetic declination once per fix; used to convert any true bearing
+        // we display in the compass into the magnetic frame the rotation sensor reports in.
+        declination = GeomagneticField(
+            s.lat.toFloat(), s.lon.toFloat(), 0f, System.currentTimeMillis()
+        ).declination
+
         if (s.matches.isEmpty()) {
             v.verdict.text = getString(R.string.no_not_in_reserve)
             v.verdict.setTextColor(ContextCompat.getColor(this, R.color.red_no))
@@ -258,8 +269,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
                 val results = FloatArray(2)
                 Location.distanceBetween(s.lat, s.lon, nr.lat, nr.lon, results)
-                bearingToExit = results[1]
-                v.exitCompass.setDirection(results[1], deviceHeading)
+                val mag = trueToMagnetic(results[1])
+                bearingToExit = mag
+                v.exitCompass.setDirection(mag, deviceHeading)
                 v.exitCompass.visibility = View.VISIBLE
             } ?: run {
                 v.detail.text = getString(R.string.not_in_any_reserve)
@@ -294,8 +306,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             s.exitPoint?.let { ep ->
                 val results = FloatArray(2)
                 Location.distanceBetween(s.lat, s.lon, ep.lat, ep.lon, results)
-                bearingToExit = results[1]
-                v.exitCompass.setDirection(results[1], deviceHeading)
+                val mag = trueToMagnetic(results[1])
+                bearingToExit = mag
+                v.exitCompass.setDirection(mag, deviceHeading)
                 v.exitCompass.visibility = View.VISIBLE
             }
         }
@@ -312,4 +325,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             v.caveat.visibility = View.VISIBLE
         }
     }
+
+    /** Location.distanceBetween returns degrees east of TRUE north; the rotation-vector
+     *  sensor reports heading relative to MAGNETIC north. Subtracting the local
+     *  declination converts true bearing to magnetic so the two are comparable. */
+    private fun trueToMagnetic(trueBearingDeg: Float): Float = trueBearingDeg - declination
 }
