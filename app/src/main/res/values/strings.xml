@@ -6,16 +6,16 @@
     <string name="grant_permission">Grant permission</string>
     <string name="open_settings">Open settings</string>
     <string name="permission_denied">Location permission is denied. Open settings to grant it.</string>
-    <string name="fine_location_recommended">Fine (precise) location is recommended. Coarse location may be too imprecise to resolve boundaries.</string>
     <string name="location_disabled">Location services are turned off. Enable them in system settings.</string>
     <string name="fix_timeout">Couldn\'t get a GPS fix. Make sure you\'re outdoors with a clear sky and try again.</string>
+    <string name="fix_timeout_with_reason">%1$s\n(%2$s)</string>
+    <string name="load_failed">Couldn\'t load reserve data: %1$s</string>
     <string name="retry">Retry</string>
     <string name="yes_in_reserve">YES</string>
     <string name="no_not_in_reserve">NO</string>
     <string name="not_in_any_reserve">You are not inside a declared nature reserve or national park.</string>
     <string name="data_vintage_note">Boundaries: INPA dataset, Jan 2026.</string>
     <string name="accuracy_caveat">Low GPS accuracy — result may be unreliable near boundaries.</string>
-    <string name="near_boundary_caveat">You may be close to a boundary.</string>
     <string name="nearest_exit">Nearest exit: ~%1$s</string>
     <string name="nearest_reserve">Nearest %2$s (~%1$s):\n%3$s</string>
 </resources>

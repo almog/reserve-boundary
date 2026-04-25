@@ -16,8 +16,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import com.isnaturereserve.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -146,12 +146,14 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private fun startLocationUpdates() {
         locationJob?.cancel()
         render(UiState.WaitingForFix)
-        // repeatOnLifecycle(STARTED) cancels the upstream flow when the activity goes
-        // into the background, which stops GPS updates. lifecycleScope alone would keep
-        // the fused location callback firing until DESTROYED — wasted battery.
+        // flowWithLifecycle(STARTED) cancels and re-collects the upstream flow on every
+        // background/foreground transition, which stops the fused location callback while
+        // the activity isn't visible. lifecycleScope alone would keep it firing until
+        // DESTROYED — wasted battery and a privacy footgun.
         locationJob = lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                locationHelper.locationUpdates().collect { result ->
+            locationHelper.locationUpdates()
+                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collect { result ->
                     val newState: UiState = when (result) {
                         is LocationResult.PermissionMissing -> UiState.NeedsPermission
                         is LocationResult.LocationDisabled -> UiState.LocationDisabled
@@ -167,7 +169,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                     }
                     render(newState)
                 }
-            }
         }
     }
 
@@ -189,7 +190,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
             is UiState.LoadFailed -> {
                 v.verdict.text = ""
-                v.detail.text = "Couldn't load reserve data: ${newState.message}"
+                v.detail.text = getString(R.string.load_failed, newState.message)
                 v.primaryButton.text = getString(R.string.retry)
                 v.primaryButton.visibility = View.VISIBLE
                 v.primaryButton.setOnClickListener { loadIndex() }
@@ -233,7 +234,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
             is UiState.FixFailed -> {
                 v.verdict.text = ""
-                v.detail.text = "${getString(R.string.fix_timeout)}\n(${newState.message})"
+                v.detail.text = getString(
+                    R.string.fix_timeout_with_reason,
+                    getString(R.string.fix_timeout),
+                    newState.message,
+                )
                 v.spinner.visibility = View.VISIBLE
             }
             is UiState.HasFix -> renderFix(newState)
