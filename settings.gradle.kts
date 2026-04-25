@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "IsNatureReserve"
+rootProject.name = "ReserveBoundary"
 include(":app")

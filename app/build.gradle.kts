@@ -11,11 +11,11 @@ val keystoreProps = Properties().apply {
 }
 
 android {
-    namespace = "com.isnaturereserve"
+    namespace = "com.reserveboundary"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.isnaturereserve"
+        applicationId = "com.reserveboundary"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

@@ -1,4 +1,4 @@
-package com.isnaturereserve
+package com.reserveboundary
 
 import android.content.Context
 import android.graphics.Canvas

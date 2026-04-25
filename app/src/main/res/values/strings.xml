@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">In a reserve?</string>
+    <string name="app_name">Reserve Boundary</string>
     <string name="loading_data">Loading reserve boundaries…</string>
     <string name="waiting_for_fix">Waiting for a GPS fix…</string>
     <string name="permission_rationale">Location permission is required to check whether you\'re inside a nature reserve.</string>

@@ -37,4 +37,4 @@ Upload `app/build/outputs/bundle/release/app-release.aab` to Play Console.
 
 ## 5. Confirm applicationId
 
-`applicationId` is currently `com.isnaturereserve`. This is **permanent** after first publish. To change it (e.g., `com.almog.isnaturereserve`), edit `app/build.gradle.kts` before publishing.
+`applicationId` is currently `com.reserveboundary`. This is **permanent** after first publish. To change it, edit `app/build.gradle.kts` before publishing.

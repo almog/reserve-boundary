@@ -1,4 +1,4 @@
-package com.isnaturereserve
+package com.reserveboundary
 
 import android.Manifest
 import android.annotation.SuppressLint

@@ -1,6 +1,6 @@
-# Is Nature Reserve?
+# Reserve Boundary
 
-A minimal Android app that tells you whether you're standing inside an Israeli nature reserve or national park.
+A minimal Android app that tells you whether you're standing inside an Israeli nature reserve or national park, and points you toward the nearest reserve boundary either way.
 
 Even with a map open, it can be tricky at times to tell whether you're inside a nature reserve (or a national park) and thus, whether or not you'll be breaking any law by camping outside a designated campground. This app tries to do just that.
 
@@ -8,6 +8,8 @@ When you are inside a reserve, the app shows:
 - The reserve/park name
 - Distance to the nearest exit (boundary edge)
 - A live compass arrow pointing toward the nearest exit
+
+When you are outside any reserve, the app shows the name and distance of the nearest one, with a compass arrow pointing toward it.
 
 ## Data
 
