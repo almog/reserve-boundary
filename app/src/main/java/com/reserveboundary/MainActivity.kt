@@ -258,7 +258,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             v.verdict.setTextColor(ContextCompat.getColor(this, R.color.red_no))
 
             s.nearbyReserve?.let { nr ->
-                val label = if (nr.type == ReserveIndex.Type.PARK) "National park" else "Nature reserve"
+                val label = featureTypeLabel(nr.type)
                 val displayName = when {
                     nr.nameEn.isNotBlank() -> nr.nameEn
                     nr.name.isNotBlank() -> nr.name
@@ -285,7 +285,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             v.verdict.text = getString(R.string.yes_in_reserve)
             v.verdict.setTextColor(ContextCompat.getColor(this, R.color.green_yes))
             val lines = s.matches.map { m ->
-                val label = if (m.type == ReserveIndex.Type.PARK) "National park" else "Nature reserve"
+                val label = featureTypeLabel(m.type)
                 val displayName = when {
                     m.nameEn.isNotBlank() -> m.nameEn
                     m.name.isNotBlank() -> m.name
@@ -335,4 +335,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
      *  sensor reports heading relative to MAGNETIC north. Subtracting the local
      *  declination converts true bearing to magnetic so the two are comparable. */
     private fun trueToMagnetic(trueBearingDeg: Float): Float = trueBearingDeg - declination
+
+    private fun featureTypeLabel(type: ReserveIndex.Type): String =
+        getString(
+            if (type == ReserveIndex.Type.PARK) {
+                R.string.feature_type_national_park
+            } else {
+                R.string.feature_type_nature_reserve
+            }
+        )
 }
