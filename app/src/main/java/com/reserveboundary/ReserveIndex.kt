@@ -49,59 +49,28 @@ class ReserveIndex(private val features: List<Feature>) {
      * all reserves (i.e. the nearest "exit" from protected areas).
      */
     fun nearestExit(lon: Double, lat: Double): ExitPoint? {
-        val cosLat = Math.cos(Math.toRadians(lat))
+        val cosLat = scaledCosLat(lat)
         var bestDist2 = Double.MAX_VALUE
         var bestLon = 0.0
         var bestLat = 0.0
 
-        // Phase 1: get upper-bound distance from enclosing features only
         for (f in features) {
-            val lonF = lon.toFloat(); val latF = lat.toFloat()
-            if (lonF < f.minLon || lonF > f.maxLon || latF < f.minLat || latF > f.maxLat) continue
-            var inCount = 0
-            for (ring in f.rings) { if (pointInRing(lon, lat, ring)) inCount++ }
-            if (inCount and 1 != 1) continue
+            val bboxDist2 = distanceToBbox2(lon, lat, cosLat, f)
+            if (bboxDist2 >= bestDist2) continue
 
             for (ring in f.rings) {
-                val d2 = closestOnRing(lon, lat, cosLat, ring)
-                if (d2 != null && d2.first < bestDist2) {
-                    bestDist2 = d2.first; bestLon = d2.second; bestLat = d2.third
+                forEachClosestSegmentPoint(lon, lat, cosLat, ring) { dist2, candidateLon, candidateLat ->
+                    if (dist2 >= bestDist2) return@forEachClosestSegmentPoint
+                    if (!isExitCandidate(lon, lat, cosLat, candidateLon, candidateLat)) {
+                        return@forEachClosestSegmentPoint
+                    }
+                    bestDist2 = dist2
+                    bestLon = candidateLon
+                    bestLat = candidateLat
                 }
             }
         }
         if (bestDist2 == Double.MAX_VALUE) return null
-
-        // Phase 2: check all features whose bbox is within upper-bound distance
-        val bufferDeg = Math.sqrt(bestDist2) * 1.1
-        for (f in features) {
-            val fMinLon = f.minLon.toDouble(); val fMinLat = f.minLat.toDouble()
-            val fMaxLon = f.maxLon.toDouble(); val fMaxLat = f.maxLat.toDouble()
-            if (fMinLon - bufferDeg > lon || fMaxLon + bufferDeg < lon) continue
-            if (fMinLat - bufferDeg > lat || fMaxLat + bufferDeg < lat) continue
-
-            for (ring in f.rings) {
-                val d2 = closestOnRing(lon, lat, cosLat, ring)
-                if (d2 != null && d2.first < bestDist2) {
-                    bestDist2 = d2.first; bestLon = d2.second; bestLat = d2.third
-                }
-            }
-        }
-
-        // Phase 3: verify the candidate is truly outside all reserves.
-        // Nudge slightly past the boundary away from user.
-        val dx = bestLon - lon
-        val dy = bestLat - lat
-        val len = Math.sqrt(dx * dx + dy * dy)
-        if (len > 0) {
-            val eps = 1e-6 // ~0.1m
-            val checkLon = bestLon + dx / len * eps
-            val checkLat = bestLat + dy / len * eps
-            if (query(checkLon, checkLat).isNotEmpty()) {
-                // The boundary candidate is between two adjacent reserves;
-                // a full search is expensive, so fall back to the boundary distance
-                // as a lower bound — still useful to the user.
-            }
-        }
 
         val results = FloatArray(1)
         android.location.Location.distanceBetween(lat, lon, bestLat, bestLon, results)
@@ -148,11 +117,48 @@ class ReserveIndex(private val features: List<Feature>) {
         return out
     }
 
+    private fun isExitCandidate(
+        fromLon: Double,
+        fromLat: Double,
+        cosLat: Double,
+        boundaryLon: Double,
+        boundaryLat: Double,
+    ): Boolean {
+        val dxMeters = (boundaryLon - fromLon) * cosLat * METERS_PER_DEGREE
+        val dyMeters = (boundaryLat - fromLat) * METERS_PER_DEGREE
+        val lenMeters = Math.sqrt(dxMeters * dxMeters + dyMeters * dyMeters)
+        if (lenMeters == 0.0) return query(boundaryLon, boundaryLat).isEmpty()
+
+        val probeMeters = 5.0
+        val checkLon = boundaryLon + (dxMeters / lenMeters) * probeMeters / (METERS_PER_DEGREE * cosLat)
+        val checkLat = boundaryLat + (dyMeters / lenMeters) * probeMeters / METERS_PER_DEGREE
+        return query(checkLon, checkLat).isEmpty()
+    }
+
     companion object {
+        private const val METERS_PER_DEGREE = 111_320.0
+        private const val MIN_COS_LAT = 0.01
+
         /** The parsed index outlives the activity so config changes (rotation, theme,
          *  locale) don't trigger a 7MB re-parse. The reference is a process-wide
          *  singleton — fine for a static, read-only dataset. */
         @Volatile private var cached: ReserveIndex? = null
+
+        private fun scaledCosLat(lat: Double): Double =
+            Math.cos(Math.toRadians(lat)).coerceAtLeast(MIN_COS_LAT)
+
+        private fun distanceToBbox2(
+            lon: Double,
+            lat: Double,
+            cosLat: Double,
+            f: Feature,
+        ): Double {
+            val clampedLon = lon.coerceIn(f.minLon.toDouble(), f.maxLon.toDouble())
+            val clampedLat = lat.coerceIn(f.minLat.toDouble(), f.maxLat.toDouble())
+            val dx = (clampedLon - lon) * cosLat
+            val dy = clampedLat - lat
+            return dx * dx + dy * dy
+        }
 
         /** Ray casting: counts edge crossings of a rightward horizontal ray from (lon, lat). */
         private fun pointInRing(lon: Double, lat: Double, ring: FloatArray): Boolean {
@@ -173,6 +179,35 @@ class ReserveIndex(private val features: List<Feature>) {
                 i += 2
             }
             return inside
+        }
+
+        private inline fun forEachClosestSegmentPoint(
+            lon: Double,
+            lat: Double,
+            cosLat: Double,
+            ring: FloatArray,
+            visit: (dist2: Double, candidateLon: Double, candidateLat: Double) -> Unit,
+        ) {
+            val n = ring.size
+            if (n < 4) return
+            var j = n - 2
+            var i = 0
+            while (i < n) {
+                val ax = ring[j].toDouble(); val ay = ring[j + 1].toDouble()
+                val bx = ring[i].toDouble(); val by = ring[i + 1].toDouble()
+                val abx = bx - ax; val aby = by - ay
+                val abLen2 = abx * abx + aby * aby
+                val t = if (abLen2 > 0.0) {
+                    ((lon - ax) * abx + (lat - ay) * aby) / abLen2
+                } else 0.0
+                val tc = t.coerceIn(0.0, 1.0)
+                val cx = ax + tc * abx
+                val cy = ay + tc * aby
+                val dx = (cx - lon) * cosLat
+                val dy = cy - lat
+                visit(dx * dx + dy * dy, cx, cy)
+                j = i; i += 2
+            }
         }
 
         /**
