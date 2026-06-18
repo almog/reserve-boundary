@@ -1,9 +1,9 @@
 <resources>
     <string name="app_name">גבול שמורה</string>
     <string name="header_question">האם אני בתוך שמורת טבע או גן לאומי?</string>
-    <string name="loading_data">טוען גבולות שמורות וגנים…</string>
+    <string name="loading_data">טוען גבולות שמורות, גנים ושטחי אש…</string>
     <string name="waiting_for_fix">ממתין לקליטת GPS…</string>
-    <string name="permission_rationale">נדרשת הרשאת מיקום כדי לבדוק אם אתם בתוך שמורת טבע או גן לאומי.</string>
+    <string name="permission_rationale">נדרשת הרשאת מיקום כדי לבדוק את מיקומכם מול שכבות הגבול השמורות במכשיר.</string>
     <string name="grant_permission">מתן הרשאה</string>
     <string name="open_settings">פתיחת הגדרות</string>
     <string name="permission_denied">הרשאת המיקום נדחתה. פתחו את ההגדרות כדי לאשר אותה.</string>
@@ -15,7 +15,7 @@
     <string name="yes_in_reserve">כן</string>
     <string name="no_not_in_reserve">לא</string>
     <string name="not_in_any_reserve">אינכם בתוך שמורת טבע או גן לאומי מוכרזים.</string>
-    <string name="data_vintage_note">גבולות: מאגר רט״ג, ינואר 2026.</string>
+    <string name="data_vintage_note">גבולות: מאגר רט״ג, ינואר 2026; שטחי אש: שכבת GovMap 234343.</string>
     <string name="accuracy_caveat">דיוק GPS נמוך, ולכן התוצאה עשויה להיות לא אמינה ליד גבולות.</string>
     <string name="nearest_exit">היציאה הקרובה ביותר מהשטח המוגן: כ-%1$s</string>
     <string name="nearest_reserve">%2$s הקרוב ביותר (%1$s):\n%3$s</string>
@@ -25,6 +25,10 @@
     <string name="language_english">English</string>
     <string name="language_hebrew">עברית</string>
     <string name="unnamed_reserve">ללא שם</string>
+    <string name="unnamed_fire_range">שטח אש ללא שם</string>
+    <string name="fire_range_status_clear">שטח אש: לא\nאינכם בתוך שטח אש מוכר.</string>
+    <string name="fire_range_status_inside">שטח אש: כן\n%1$s</string>
+    <string name="fire_range_match_with_remarks">%1$s\n%2$s</string>
     <string name="distance_kilometers">%.1f ק״מ</string>
     <string name="distance_meters">%1$d מ׳</string>
 </resources>

@@ -1,6 +1,6 @@
 # Reserve Boundary
 
-A minimal Android app that tells you whether you're standing inside an Israeli nature reserve or national park, and points you toward the nearest reserve boundary either way.
+A minimal Android app that tells you whether you're standing inside an Israeli nature reserve or national park, points you toward the nearest reserve boundary either way, and shows whether the same location is inside a military fire range.
 
 Even with a map open, it can be tricky at times to tell whether you're inside a nature reserve (or a national park) and thus, whether or not you'll be breaking any law by camping outside a designated campground. This app tries to do just that.
 
@@ -10,6 +10,8 @@ When you are inside a reserve, the app shows:
 - A live compass arrow pointing toward the nearest exit
 
 When you are outside any reserve, the app shows the name and distance of the nearest one, with a compass arrow pointing toward it.
+
+The app also shows a secondary military fire range status from the bundled GovMap layer. The compass remains tied to the nature reserve/national park result.
 
 ## Screenshots
 
@@ -51,7 +53,7 @@ Requires Android SDK with compileSdk 35 and JDK 17.
 
 ## Permissions
 
-- **Fine / Coarse Location** — required to test the user's position against reserve polygons. Used only on-device; no location data leaves the phone.
+- **Fine / Coarse Location** — required to test the user's position against reserve and fire range polygons. Used only on-device; no location data leaves the phone.
 
 ## Attribution
 

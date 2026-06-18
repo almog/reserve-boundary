@@ -1,9 +1,9 @@
 <resources>
     <string name="app_name">Reserve Boundary</string>
     <string name="header_question">Am I in a Nature Reserve/National Park?</string>
-    <string name="loading_data">Loading reserve and park boundaries…</string>
+    <string name="loading_data">Loading reserve, park, and fire range boundaries…</string>
     <string name="waiting_for_fix">Waiting for a GPS fix…</string>
-    <string name="permission_rationale">Location permission is required to check whether you\'re inside a nature reserve or national park.</string>
+    <string name="permission_rationale">Location permission is required to check your position against the offline boundary datasets.</string>
     <string name="grant_permission">Grant permission</string>
     <string name="open_settings">Open settings</string>
     <string name="permission_denied">Location permission is denied. Open settings to grant it.</string>
@@ -15,7 +15,7 @@
     <string name="yes_in_reserve">YES</string>
     <string name="no_not_in_reserve">NO</string>
     <string name="not_in_any_reserve">You are not inside a declared nature reserve or national park.</string>
-    <string name="data_vintage_note">Boundaries: INPA dataset, Jan 2026.</string>
+    <string name="data_vintage_note">Boundaries: INPA dataset, Jan 2026; fire ranges: GovMap layer 234343.</string>
     <string name="accuracy_caveat">Low GPS accuracy — result may be unreliable near boundaries.</string>
     <string name="nearest_exit">Nearest exit from protected area: ~%1$s</string>
     <string name="nearest_reserve">Nearest %2$s (~%1$s):\n%3$s</string>
@@ -25,6 +25,10 @@
     <string name="language_english">English</string>
     <string name="language_hebrew">עברית</string>
     <string name="unnamed_reserve">(unnamed)</string>
+    <string name="unnamed_fire_range">(unnamed fire range)</string>
+    <string name="fire_range_status_clear">Military fire range: NO\nYou are not inside a known military fire range.</string>
+    <string name="fire_range_status_inside">Military fire range: YES\n%1$s</string>
+    <string name="fire_range_match_with_remarks">%1$s\n%2$s</string>
     <string name="distance_kilometers">%.1f km</string>
     <string name="distance_meters">%1$d m</string>
 </resources>

@@ -38,7 +38,8 @@ sealed class UiState {
     object WaitingForFix : UiState()
     data class FixFailed(val message: String) : UiState()
     data class HasFix(
-        val matches: List<ReserveIndex.Match>,
+        val reserveMatches: List<ReserveIndex.Match>,
+        val fireRangeMatches: List<FireRangeIndex.Match>,
         val lat: Double,
         val lon: Double,
         val accuracyMeters: Float,
@@ -47,13 +48,19 @@ sealed class UiState {
     ) : UiState()
 }
 
+private data class BoundaryIndexes(
+    val reserveIndex: ReserveIndex,
+    val fireRangeIndex: FireRangeIndex,
+)
+
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var locationHelper: LocationHelper
     private lateinit var sensorManager: SensorManager
 
-    private var index: ReserveIndex? = null
+    private var reserveIndex: ReserveIndex? = null
+    private var fireRangeIndex: FireRangeIndex? = null
     private var state: UiState = UiState.LoadingData
     /** Magnetic bearing (degrees) toward the displayed target. The rotation-vector sensor
      *  reports magnetic-north heading, so the compass arithmetic is consistent only if
@@ -99,10 +106,16 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         render(UiState.LoadingData)
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                runCatching { ReserveIndex.loadFromAssets(this@MainActivity) }
+                runCatching {
+                    BoundaryIndexes(
+                        reserveIndex = ReserveIndex.loadFromAssets(this@MainActivity),
+                        fireRangeIndex = FireRangeIndex.loadFromAssets(this@MainActivity),
+                    )
+                }
             }
-            result.onSuccess {
-                index = it
+            result.onSuccess { indexes ->
+                reserveIndex = indexes.reserveIndex
+                fireRangeIndex = indexes.fireRangeIndex
                 start()
             }.onFailure { t ->
                 render(UiState.LoadFailed(t.message ?: t.javaClass.simpleName))
@@ -118,7 +131,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
         // Re-enter the flow when the user returns from system settings (granted permission
         // or enabled location). Without this, the screen stays stuck on the previous error.
-        if (index != null && (state is UiState.PermissionPermanentlyDenied ||
+        if (indexesLoaded() && (state is UiState.PermissionPermanentlyDenied ||
                 state is UiState.LocationDisabled)) {
             start()
         }
@@ -167,17 +180,37 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                         is LocationResult.Error -> UiState.FixFailed(result.message)
                         is LocationResult.Ok -> {
                             val loc = result.location
-                            val idx = index
-                            val matches = idx?.query(loc.longitude, loc.latitude).orEmpty()
-                            val exit = if (matches.isNotEmpty()) idx?.nearestExit(loc.longitude, loc.latitude) else null
-                            val nearby = if (matches.isEmpty()) idx?.nearestReserve(loc.longitude, loc.latitude) else null
-                            UiState.HasFix(matches, loc.latitude, loc.longitude, loc.accuracy, exit, nearby)
+                            val reserveIdx = reserveIndex
+                            val fireIdx = fireRangeIndex
+                            val reserveMatches = reserveIdx?.query(loc.longitude, loc.latitude).orEmpty()
+                            val fireRangeMatches = fireIdx?.query(loc.longitude, loc.latitude).orEmpty()
+                            val exit = if (reserveMatches.isNotEmpty()) {
+                                reserveIdx?.nearestExit(loc.longitude, loc.latitude)
+                            } else {
+                                null
+                            }
+                            val nearby = if (reserveMatches.isEmpty()) {
+                                reserveIdx?.nearestReserve(loc.longitude, loc.latitude)
+                            } else {
+                                null
+                            }
+                            UiState.HasFix(
+                                reserveMatches = reserveMatches,
+                                fireRangeMatches = fireRangeMatches,
+                                lat = loc.latitude,
+                                lon = loc.longitude,
+                                accuracyMeters = loc.accuracy,
+                                exitPoint = exit,
+                                nearbyReserve = nearby,
+                            )
                         }
                     }
                     render(newState)
                 }
         }
     }
+
+    private fun indexesLoaded(): Boolean = reserveIndex != null && fireRangeIndex != null
 
     private fun render(newState: UiState) {
         state = newState
@@ -187,6 +220,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         v.primaryButton.visibility = View.GONE
         v.caveat.visibility = View.GONE
         v.exitCompass.visibility = View.GONE
+        v.fireRangeDetail.visibility = View.GONE
         v.coords.text = ""
         bearingToExit = null
 
@@ -261,7 +295,25 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             s.lat.toFloat(), s.lon.toFloat(), 0f, System.currentTimeMillis()
         ).declination
 
-        if (s.matches.isEmpty()) {
+        renderReserveFix(s)
+        renderFireRangeStatus(s)
+
+        val accInt = s.accuracyMeters.toInt()
+        v.coords.text = String.format(
+            Locale.US,
+            "%.5f, %.5f  (±%dm)",
+            s.lat, s.lon, accInt,
+        )
+
+        if (s.accuracyMeters > 30f) {
+            v.caveat.text = tr(R.string.accuracy_caveat)
+            v.caveat.visibility = View.VISIBLE
+        }
+    }
+
+    private fun renderReserveFix(s: UiState.HasFix) {
+        val v = binding
+        if (s.reserveMatches.isEmpty()) {
             v.verdict.text = tr(R.string.no_not_in_reserve)
             v.verdict.setTextColor(ContextCompat.getColor(this, R.color.red_no))
 
@@ -283,7 +335,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         } else {
             v.verdict.text = tr(R.string.yes_in_reserve)
             v.verdict.setTextColor(ContextCompat.getColor(this, R.color.green_yes))
-            val lines = s.matches.map { m ->
+            val lines = s.reserveMatches.map { m ->
                 val label = featureTypeLabel(m.type)
                 val displayName = reserveDisplayName(m.name, m.nameEn)
                 "$label: $displayName"
@@ -307,18 +359,27 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 v.exitCompass.visibility = View.VISIBLE
             }
         }
+    }
 
-        val accInt = s.accuracyMeters.toInt()
-        v.coords.text = String.format(
-            Locale.US,
-            "%.5f, %.5f  (±%dm)",
-            s.lat, s.lon, accInt,
-        )
-
-        if (s.accuracyMeters > 30f) {
-            v.caveat.text = tr(R.string.accuracy_caveat)
-            v.caveat.visibility = View.VISIBLE
+    private fun renderFireRangeStatus(s: UiState.HasFix) {
+        val v = binding
+        v.fireRangeDetail.visibility = View.VISIBLE
+        if (s.fireRangeMatches.isEmpty()) {
+            v.fireRangeDetail.text = tr(R.string.fire_range_status_clear)
+            v.fireRangeDetail.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+            return
         }
+
+        val matches = s.fireRangeMatches.joinToString("\n\n") { match ->
+            val name = match.name.ifBlank { tr(R.string.unnamed_fire_range) }
+            if (match.remarks.isBlank()) {
+                name
+            } else {
+                tr(R.string.fire_range_match_with_remarks, name, match.remarks)
+            }
+        }
+        v.fireRangeDetail.text = tr(R.string.fire_range_status_inside, matches)
+        v.fireRangeDetail.setTextColor(ContextCompat.getColor(this, R.color.amber_warn))
     }
 
     /** Location.distanceBetween returns degrees east of TRUE north; the rotation-vector
