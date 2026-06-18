@@ -1,0 +1,30 @@
+<resources>
+    <string name="app_name">גבול שמורה</string>
+    <string name="header_question">האם אני בתוך שמורת טבע או גן לאומי?</string>
+    <string name="loading_data">טוען גבולות שמורות וגנים…</string>
+    <string name="waiting_for_fix">ממתין לקליטת GPS…</string>
+    <string name="permission_rationale">נדרשת הרשאת מיקום כדי לבדוק אם אתם בתוך שמורת טבע או גן לאומי.</string>
+    <string name="grant_permission">מתן הרשאה</string>
+    <string name="open_settings">פתיחת הגדרות</string>
+    <string name="permission_denied">הרשאת המיקום נדחתה. פתחו את ההגדרות כדי לאשר אותה.</string>
+    <string name="location_disabled">שירותי המיקום כבויים. הפעילו אותם בהגדרות המערכת.</string>
+    <string name="fix_timeout">לא התקבלה קליטת GPS. ודאו שאתם בחוץ עם שמיים פתוחים ונסו שוב.</string>
+    <string name="fix_timeout_with_reason">%1$s\n(%2$s)</string>
+    <string name="load_failed">לא ניתן היה לטעון את נתוני הגבולות: %1$s</string>
+    <string name="retry">נסה שוב</string>
+    <string name="yes_in_reserve">כן</string>
+    <string name="no_not_in_reserve">לא</string>
+    <string name="not_in_any_reserve">אינכם בתוך שמורת טבע או גן לאומי מוכרזים.</string>
+    <string name="data_vintage_note">גבולות: מאגר רט״ג, ינואר 2026.</string>
+    <string name="accuracy_caveat">דיוק GPS נמוך, ולכן התוצאה עשויה להיות לא אמינה ליד גבולות.</string>
+    <string name="nearest_exit">היציאה הקרובה ביותר מהשטח המוגן: כ-%1$s</string>
+    <string name="nearest_reserve">%2$s הקרוב ביותר (%1$s):\n%3$s</string>
+    <string name="feature_type_national_park">גן לאומי</string>
+    <string name="feature_type_nature_reserve">שמורת טבע</string>
+    <string name="language_label">שפה</string>
+    <string name="language_english">English</string>
+    <string name="language_hebrew">עברית</string>
+    <string name="unnamed_reserve">ללא שם</string>
+    <string name="distance_kilometers">%.1f ק״מ</string>
+    <string name="distance_meters">%1$d מ׳</string>
+</resources>

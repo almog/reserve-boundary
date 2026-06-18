@@ -21,4 +21,10 @@
     <string name="nearest_reserve">Nearest %2$s (~%1$s):\n%3$s</string>
     <string name="feature_type_national_park">National park</string>
     <string name="feature_type_nature_reserve">Nature reserve</string>
+    <string name="language_label">Language</string>
+    <string name="language_english">English</string>
+    <string name="language_hebrew">עברית</string>
+    <string name="unnamed_reserve">(unnamed)</string>
+    <string name="distance_kilometers">%.1f km</string>
+    <string name="distance_meters">%1$d m</string>
 </resources>

@@ -62,6 +62,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var deviceHeading = 0f
     private var declination = 0f
     private var locationJob: Job? = null
+    private var syncingLanguagePicker = false
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -80,9 +81,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.layoutDirection = if (AppLanguage.isHebrew()) {
+            View.LAYOUT_DIRECTION_RTL
+        } else {
+            View.LAYOUT_DIRECTION_LTR
+        }
 
         locationHelper = LocationHelper(this)
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        setupLanguagePicker()
 
         render(UiState.LoadingData)
         loadIndex()
@@ -175,6 +182,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private fun render(newState: UiState) {
         state = newState
         val v = binding
+        bindStaticText()
         v.spinner.visibility = View.GONE
         v.primaryButton.visibility = View.GONE
         v.caveat.visibility = View.GONE
@@ -185,20 +193,20 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         when (newState) {
             is UiState.LoadingData -> {
                 v.verdict.text = ""
-                v.detail.text = getString(R.string.loading_data)
+                v.detail.text = tr(R.string.loading_data)
                 v.spinner.visibility = View.VISIBLE
             }
             is UiState.LoadFailed -> {
                 v.verdict.text = ""
-                v.detail.text = getString(R.string.load_failed, newState.message)
-                v.primaryButton.text = getString(R.string.retry)
+                v.detail.text = tr(R.string.load_failed, newState.message)
+                v.primaryButton.text = tr(R.string.retry)
                 v.primaryButton.visibility = View.VISIBLE
                 v.primaryButton.setOnClickListener { loadIndex() }
             }
             is UiState.NeedsPermission -> {
                 v.verdict.text = ""
-                v.detail.text = getString(R.string.permission_rationale)
-                v.primaryButton.text = getString(R.string.grant_permission)
+                v.detail.text = tr(R.string.permission_rationale)
+                v.primaryButton.text = tr(R.string.grant_permission)
                 v.primaryButton.visibility = View.VISIBLE
                 v.primaryButton.setOnClickListener {
                     permissionLauncher.launch(arrayOf(
@@ -209,8 +217,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
             is UiState.PermissionPermanentlyDenied -> {
                 v.verdict.text = ""
-                v.detail.text = getString(R.string.permission_denied)
-                v.primaryButton.text = getString(R.string.open_settings)
+                v.detail.text = tr(R.string.permission_denied)
+                v.primaryButton.text = tr(R.string.open_settings)
                 v.primaryButton.visibility = View.VISIBLE
                 v.primaryButton.setOnClickListener {
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
@@ -220,8 +228,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
             is UiState.LocationDisabled -> {
                 v.verdict.text = ""
-                v.detail.text = getString(R.string.location_disabled)
-                v.primaryButton.text = getString(R.string.open_settings)
+                v.detail.text = tr(R.string.location_disabled)
+                v.primaryButton.text = tr(R.string.open_settings)
                 v.primaryButton.visibility = View.VISIBLE
                 v.primaryButton.setOnClickListener {
                     startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
@@ -229,14 +237,14 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
             is UiState.WaitingForFix -> {
                 v.verdict.text = ""
-                v.detail.text = getString(R.string.waiting_for_fix)
+                v.detail.text = tr(R.string.waiting_for_fix)
                 v.spinner.visibility = View.VISIBLE
             }
             is UiState.FixFailed -> {
                 v.verdict.text = ""
-                v.detail.text = getString(
+                v.detail.text = tr(
                     R.string.fix_timeout_with_reason,
-                    getString(R.string.fix_timeout),
+                    tr(R.string.fix_timeout),
                     newState.message,
                 )
                 v.spinner.visibility = View.VISIBLE
@@ -254,23 +262,14 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         ).declination
 
         if (s.matches.isEmpty()) {
-            v.verdict.text = getString(R.string.no_not_in_reserve)
+            v.verdict.text = tr(R.string.no_not_in_reserve)
             v.verdict.setTextColor(ContextCompat.getColor(this, R.color.red_no))
 
             s.nearbyReserve?.let { nr ->
                 val label = featureTypeLabel(nr.type)
-                val displayName = when {
-                    nr.nameEn.isNotBlank() -> nr.nameEn
-                    nr.name.isNotBlank() -> nr.name
-                    else -> "(unnamed)"
-                }
-                val dist = nr.distanceMeters
-                val formatted = if (dist >= 1000f) {
-                    String.format(Locale.US, "%.1f km", dist / 1000f)
-                } else {
-                    String.format(Locale.US, "%d m", dist.toInt())
-                }
-                v.detail.text = getString(R.string.nearest_reserve, formatted, label, displayName)
+                val displayName = reserveDisplayName(nr.name, nr.nameEn)
+                val formatted = formatDistance(nr.distanceMeters)
+                v.detail.text = tr(R.string.nearest_reserve, formatted, label, displayName)
 
                 val results = FloatArray(2)
                 Location.distanceBetween(s.lat, s.lon, nr.lat, nr.lon, results)
@@ -279,28 +278,19 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 v.exitCompass.setDirection(mag, deviceHeading)
                 v.exitCompass.visibility = View.VISIBLE
             } ?: run {
-                v.detail.text = getString(R.string.not_in_any_reserve)
+                v.detail.text = tr(R.string.not_in_any_reserve)
             }
         } else {
-            v.verdict.text = getString(R.string.yes_in_reserve)
+            v.verdict.text = tr(R.string.yes_in_reserve)
             v.verdict.setTextColor(ContextCompat.getColor(this, R.color.green_yes))
             val lines = s.matches.map { m ->
                 val label = featureTypeLabel(m.type)
-                val displayName = when {
-                    m.nameEn.isNotBlank() -> m.nameEn
-                    m.name.isNotBlank() -> m.name
-                    else -> "(unnamed)"
-                }
+                val displayName = reserveDisplayName(m.name, m.nameEn)
                 "$label: $displayName"
             }
             val exitLine = s.exitPoint?.let { ep ->
-                val dist = ep.distanceMeters
-                val formatted = if (dist >= 1000f) {
-                    String.format(Locale.US, "%.1f km", dist / 1000f)
-                } else {
-                    String.format(Locale.US, "%d m", dist.toInt())
-                }
-                getString(R.string.nearest_exit, formatted)
+                val formatted = formatDistance(ep.distanceMeters)
+                tr(R.string.nearest_exit, formatted)
             }
             v.detail.text = if (exitLine != null) {
                 (lines + "" + exitLine).joinToString("\n")
@@ -326,7 +316,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         )
 
         if (s.accuracyMeters > 30f) {
-            v.caveat.text = getString(R.string.accuracy_caveat)
+            v.caveat.text = tr(R.string.accuracy_caveat)
             v.caveat.visibility = View.VISIBLE
         }
     }
@@ -337,11 +327,61 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private fun trueToMagnetic(trueBearingDeg: Float): Float = trueBearingDeg - declination
 
     private fun featureTypeLabel(type: ReserveIndex.Type): String =
-        getString(
+        tr(
             if (type == ReserveIndex.Type.PARK) {
                 R.string.feature_type_national_park
             } else {
                 R.string.feature_type_nature_reserve
             }
         )
+
+    private fun setupLanguagePicker() {
+        syncingLanguagePicker = true
+        binding.languageOptions.check(
+            if (AppLanguage.isHebrew()) R.id.languageHebrew else R.id.languageEnglish
+        )
+        syncingLanguagePicker = false
+
+        binding.languageOptions.setOnCheckedChangeListener { _, checkedId ->
+            if (syncingLanguagePicker || checkedId == View.NO_ID) return@setOnCheckedChangeListener
+            val languageTag = if (checkedId == R.id.languageHebrew) {
+                AppLanguage.HEBREW
+            } else {
+                AppLanguage.ENGLISH
+            }
+            if (AppLanguage.setLanguage(languageTag)) {
+                recreate()
+            }
+        }
+    }
+
+    private fun bindStaticText() {
+        binding.languageLabel.text = tr(R.string.language_label)
+        binding.languageEnglish.text = tr(R.string.language_english)
+        binding.languageHebrew.text = tr(R.string.language_hebrew)
+        binding.question.text = tr(R.string.header_question)
+        binding.vintage.text = tr(R.string.data_vintage_note)
+    }
+
+    private fun reserveDisplayName(nameHe: String, nameEn: String): String {
+        val primary = if (AppLanguage.isHebrew()) nameHe else nameEn
+        val fallback = if (AppLanguage.isHebrew()) nameEn else nameHe
+        return primary.ifBlank { fallback }.ifBlank { tr(R.string.unnamed_reserve) }
+    }
+
+    private fun formatDistance(distanceMeters: Float): String =
+        if (distanceMeters >= 1000f) {
+            tr(R.string.distance_kilometers, distanceMeters / 1000f)
+        } else {
+            tr(R.string.distance_meters, distanceMeters.toInt())
+        }
+
+    private fun tr(resId: Int, vararg args: Any): String =
+        ContextCompat.getContextForLanguage(this).let { localized ->
+            if (args.isEmpty()) {
+                ContextCompat.getString(localized, resId)
+            } else {
+                localized.getString(resId, *args)
+            }
+        }
 }
