@@ -23,6 +23,16 @@ Reserve and national park boundaries come from the [INPA Boundaries](https://git
 
 The bundled GeoJSON (`app/src/main/assets/inpa_reserves.geojson`) contains polygon geometries for all declared nature reserves and national parks.
 
+Military fire range boundaries come from GovMap WFS layer `govmap:layer_234343`, the official public fire ranges layer. The layer already returns GeoJSON in EPSG:4326, so the local pipeline only downloads, validates, records the WFS response timestamp as `source.fetched_at`, normalizes field names, and rounds coordinates.
+
+Regenerate the bundled fire ranges asset:
+
+```
+uv run scripts/process_fire_ranges.py
+```
+
+The script writes `app/src/main/assets/fire_ranges.geojson`. It uses `certifi` through `uv` for reliable TLS certificate verification; no GDAL/GeoPandas GIS dependencies are needed for this source.
+
 ## Building
 
 Debug build, install on a connected device:
